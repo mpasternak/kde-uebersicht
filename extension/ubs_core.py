@@ -7,6 +7,7 @@ import json
 import math
 import os
 import shutil
+import socket
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -141,3 +142,82 @@ def webkit_zoom_level(mode, text_scale: float, implicit: float) -> float:
     if not target or target <= 0:
         target = 1.0
     return target / (implicit if implicit and implicit > 0 else 1.0)
+
+
+# --- KDE Plasma backend (kde/uebersicht_plasma.py) -------------------------------
+# Menu entries of the Plasma tray menu; the GNOME extension keeps its own copy.
+ZOOM_CHOICES = (
+    (ZOOM_SYSTEM, "Follow system text size"),
+    ("1", "100%"),
+    ("1.1", "110%"),
+    ("1.25", "125%"),
+    ("1.5", "150%"),
+    ("2", "200%"),
+)
+
+
+def zoom_key(mode) -> str:
+    """Menu key for a zoom mode: 'system', or the factor without trailing zeros (1.0 → '1')."""
+    return ZOOM_SYSTEM if mode == ZOOM_SYSTEM else f"{float(mode):g}"
+
+
+def widget_label(wid: str) -> str:
+    """Human-readable widget name: 'clock.widget/index.jsx' → 'clock.widget', 'hello.jsx' → 'hello'."""
+    for suffix in ("/index.jsx", "/index.js", ".jsx"):
+        if wid.endswith(suffix):
+            return wid[: -len(suffix)]
+    return wid
+
+
+def control_socket_path() -> Path:
+    """Unix socket the Plasma daemon listens on for control commands."""
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if runtime:
+        return Path(runtime) / "plasma-uebersicht.sock"
+    return Path("/tmp") / f"plasma-uebersicht-{os.getuid()}.sock"
+
+
+def parse_command(line: str) -> tuple[str, str]:
+    """Split a control line ('widget-hide clock.jsx') into (command, argument)."""
+    cmd, _, arg = line.strip().partition(" ")
+    return cmd, arg.strip()
+
+
+def send_command(path: Path, line: str, timeout: float = 5.0) -> str:
+    """Send one control line to a running Plasma daemon and return its (JSON) reply."""
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+        s.settimeout(timeout)
+        s.connect(str(path))
+        s.sendall(line.strip().encode() + b"\n")
+        s.shutdown(socket.SHUT_WR)
+        chunks = []
+        while chunk := s.recv(65536):
+            chunks.append(chunk)
+    return b"".join(chunks).decode("utf-8", "replace")
+
+
+def scan_tree(root: Path) -> dict[str, tuple[float, int]]:
+    """(mtime, size) of every file the widgets may depend on, keyed by path relative to root.
+
+    Used to find out what changed after a file watcher event (QFileSystemWatcher
+    only says *that* a directory changed, and editors often save by renaming)."""
+    out: dict[str, tuple[float, int]] = {}
+    if not root.is_dir():
+        return out
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=True):
+        dirnames[:] = [d for d in dirnames if d != "node_modules" and not d.startswith(".")]
+        for f in filenames:
+            if f.startswith("."):
+                continue
+            full = Path(dirpath) / f
+            try:
+                st = full.stat()
+            except OSError:
+                continue  # vanished between listing and stat
+            out[str(full.relative_to(root))] = (st.st_mtime, st.st_size)
+    return out
+
+
+def changed_paths(before: dict, after: dict) -> set[str]:
+    """Paths added, removed or modified between two scan_tree() snapshots."""
+    return {k for k in before.keys() | after.keys() if before.get(k) != after.get(k)}

@@ -128,5 +128,70 @@ class ZoomTest(unittest.TestCase):
         self.assertAlmostEqual(ubs_core.webkit_zoom_level("system", 0, 0), 1.0)
 
 
+class PlasmaHelpersTest(unittest.TestCase):
+    def test_zoom_key(self):
+        self.assertEqual(ubs_core.zoom_key("system"), "system")
+        self.assertEqual(ubs_core.zoom_key(1.0), "1")
+        self.assertEqual(ubs_core.zoom_key(1.25), "1.25")
+        keys = [k for k, _ in ubs_core.ZOOM_CHOICES]
+        for preset in ubs_core.ZOOM_PRESETS:
+            self.assertIn(ubs_core.zoom_key(preset), keys)
+
+    def test_widget_label(self):
+        self.assertEqual(ubs_core.widget_label("hello.jsx"), "hello")
+        self.assertEqual(ubs_core.widget_label("clock.widget/index.jsx"), "clock.widget")
+        self.assertEqual(ubs_core.widget_label("a/b.widget/index.js"), "a/b.widget")
+
+    def test_parse_command(self):
+        self.assertEqual(ubs_core.parse_command("reload\n"), ("reload", ""))
+        self.assertEqual(ubs_core.parse_command(" widget-hide  my clock.jsx \n"), ("widget-hide", "my clock.jsx"))
+
+    def test_control_socket_path(self):
+        with mock.patch.dict(os.environ, {"XDG_RUNTIME_DIR": "/run/user/42"}):
+            self.assertEqual(ubs_core.control_socket_path(), Path("/run/user/42/plasma-uebersicht.sock"))
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(ubs_core.control_socket_path().parent, Path("/tmp"))
+
+    def test_scan_and_diff(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "a.jsx").write_text("1")
+            (root / "node_modules").mkdir()
+            (root / "node_modules" / "x.js").write_text("x")
+            (root / ".hidden.jsx").write_text("h")
+            before = ubs_core.scan_tree(root)
+            self.assertEqual(set(before), {"a.jsx"})
+            (root / "a.jsx").write_text("22")
+            (root / "lib").mkdir()
+            (root / "lib" / "util.js").write_text("u")
+            after = ubs_core.scan_tree(root)
+            self.assertEqual(ubs_core.changed_paths(before, after), {"a.jsx", "lib/util.js"})
+            self.assertEqual(ubs_core.changed_paths(after, after), set())
+        self.assertEqual(ubs_core.scan_tree(Path(d)), {})
+
+    def test_send_command_roundtrip(self):
+        import socket
+        import threading
+
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "s.sock"
+            srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            srv.bind(str(path))
+            srv.listen(1)
+
+            def serve():
+                conn, _ = srv.accept()
+                with conn:
+                    line = conn.makefile().readline()
+                    conn.sendall(json.dumps({"got": line.strip()}).encode() + b"\n")
+
+            t = threading.Thread(target=serve)
+            t.start()
+            reply = ubs_core.send_command(path, "status")
+            t.join()
+            srv.close()
+            self.assertEqual(json.loads(reply), {"got": "status"})
+
+
 if __name__ == "__main__":
     unittest.main()

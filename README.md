@@ -1,7 +1,7 @@
 # gnome-uebersicht
 
 [Übersicht](https://tracesof.net/uebersicht/)-compatible desktop widgets for
-GNOME Shell on Wayland. Widgets are web components (JSX + CSS) fed by shell
+GNOME Shell and KDE Plasma on Wayland. Widgets are web components (JSX + CSS) fed by shell
 commands, drawn on the desktop above the wallpaper and below all windows.
 
 Existing Übersicht `.jsx` widgets run unchanged as long as their commands work
@@ -65,6 +65,50 @@ Publishing on extensions.gnome.org is tracked in
 Widgets live in `~/.local/share/uebersicht/widgets`
 (override with `UBERSICHT_WIDGETS_DIR`).
 
+## KDE Plasma
+
+`kde/` is a native Plasma backend: the same widgets, runtime and state, with Qt
+instead of GTK and no Shell extension.
+
+```
+systemd user service ──▶ kde/uebersicht_plasma.py (PyQt6)
+                            │  Desktop.qml: Qt Quick window on the desktop layer
+                            │    (LayerShellQt, layer BOTTOM: above the wallpaper
+                            │    and desktop icons, below all windows, all desktops)
+                            │  QtWebEngine view, QWebChannel bridge emulating
+                            │    WebKit's messageHandlers → runtime.js unchanged
+                            │  click-through outside widgets (window input mask)
+                            │  tray icon (StatusNotifierItem) with the menu
+                            └─ control socket: uebersicht_plasma.py --send <cmd>
+```
+
+Requirements: Plasma 6 on Wayland, Qt ≥ 6.9 and
+
+```sh
+sudo apt install python3-pyqt6.qtwebengine python3-pyqt6.qtwebchannel \
+  qml6-module-qtwebengine qml6-module-qtwebchannel qml6-module-org-kde-layershell
+```
+
+plus Node.js/npm for the runtime bundle. Then:
+
+```sh
+kde/install.sh     # builds the runtime, installs and starts the systemd user service
+```
+
+The service (`plasma-uebersicht.service`) starts with the Plasma session and is
+skipped in other desktops. The tray icon menu matches the GNOME top bar menu
+(left click shows/hides all widgets); *Widget size → Follow system font size*
+scales widgets with Plasma's general font (10 pt = 100%). From a terminal:
+
+```sh
+kde/uebersicht_plasma.py --send status             # JSON: widgets, hidden, zoom
+kde/uebersicht_plasma.py --send "widget-hide hello.jsx"
+kde/uebersicht_plasma.py --send restart            # after daemon/QML/runtime changes
+```
+
+Debugging: `journalctl --user -u plasma-uebersicht -f`, tray menu → *Web
+inspector*, or `kde/uebersicht_plasma.py --debug` for an ordinary window.
+
 ## Widget API
 
 Same as Übersicht:
@@ -106,7 +150,7 @@ multiple monitors (widgets render on the primary monitor).
 npm ci
 npm run lint && npm run build && npm test     # JS: eslint, bundle, node --test
 python3 -m unittest discover -s tests         # Python: daemon core
-uvx ruff check extension tests                # Python lint
+uvx ruff check extension kde tests            # Python lint
 pre-commit install                            # optional git hooks
 ```
 
