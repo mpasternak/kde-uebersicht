@@ -3,17 +3,10 @@ import globals from "globals";
 import react from "eslint-plugin-react";
 
 export default [
-  { ignores: ["extension/runtime/runtime.js", "node_modules/", "tests/fixtures/"] },
+  { ignores: ["app/runtime/runtime.js", "node_modules/", "tests/fixtures/"] },
   js.configs.recommended,
   {
-    // GNOME Shell extension (GJS)
-    files: ["extension/**/*.js"],
-    languageOptions: {
-      globals: { global: "readonly", console: "readonly", TextEncoder: "readonly", TextDecoder: "readonly" },
-    },
-  },
-  {
-    // Widget runtime (WebKit)
+    // Widget runtime (browser)
     files: ["runtime/**/*.{js,jsx}"],
     languageOptions: {
       globals: globals.browser,

@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { evaluateWidget } from "../runtime/core.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const FLAGS = JSON.parse(readFileSync(join(ROOT, "extension/esbuild-flags.json"), "utf8"));
+const FLAGS = JSON.parse(readFileSync(join(ROOT, "app/esbuild-flags.json"), "utf8"));
 const ESBUILD = join(ROOT, "node_modules/.bin/esbuild");
 
 function compile(file) {

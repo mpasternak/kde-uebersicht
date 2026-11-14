@@ -1,13 +1,13 @@
 [Unit]
 Description=Übersicht-style desktop widgets for KDE Plasma
-Documentation=https://github.com/mpasternak/gnome-uebersicht
+Documentation=https://github.com/mpasternak/kde-uebersicht
 PartOf=graphical-session.target
 After=plasma-plasmashell.service
-# only in Plasma sessions — on GNOME the Shell extension runs its own daemon
+# only in Plasma sessions
 ConditionEnvironment=XDG_CURRENT_DESKTOP=KDE
 
 [Service]
-ExecStart=/usr/bin/python3 -u @KDE_DIR@/uebersicht_plasma.py
+ExecStart=/usr/bin/python3 -u @APP_DIR@/kde_uebersicht.py
 Restart=on-failure
 RestartSec=3
 

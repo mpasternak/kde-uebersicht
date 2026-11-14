@@ -2,7 +2,7 @@
 Type=Application
 Name=Übersicht Widgets
 Comment=Übersicht-style desktop widgets (JSX + shell commands)
-Exec=/usr/bin/python3 @KDE_DIR@/uebersicht_plasma.py
+Exec=/usr/bin/python3 @APP_DIR@/kde_uebersicht.py
 Icon=widget-alternatives
 Categories=Utility;
 OnlyShowIn=KDE;

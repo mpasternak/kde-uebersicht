@@ -10,7 +10,7 @@ export const className = `
   border-radius: 12px;
   background: rgba(20, 20, 24, 0.75);
   color: #eee;
-  font: 14px "Cantarell", sans-serif;
+  font: 14px "Noto Sans", sans-serif;
 `;
 
 const big = css`font-size: 28px; font-weight: 700;`;

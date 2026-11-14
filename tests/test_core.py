@@ -1,4 +1,4 @@
-"""Unit tests for extension/ubs_core.py (no GTK/WebKit needed)."""
+"""Unit tests for app/ubs_core.py (no Qt needed)."""
 
 import json
 import os
@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "extension"))
+sys.path.insert(0, str(ROOT / "app"))
 
 import ubs_core  # noqa: E402
 
@@ -67,7 +67,7 @@ class StateTest(unittest.TestCase):
         env = {"XDG_STATE_HOME": "/s", "XDG_DATA_HOME": "/d"}
         with mock.patch.dict(os.environ, env, clear=False):
             os.environ.pop("UBERSICHT_WIDGETS_DIR", None)
-            self.assertEqual(ubs_core.state_file(), Path("/s/gnome-uebersicht/state.json"))
+            self.assertEqual(ubs_core.state_file(), Path("/s/kde-uebersicht/state.json"))
             self.assertEqual(ubs_core.default_widgets_dir(), Path("/d/uebersicht/widgets"))
         with mock.patch.dict(os.environ, {"UBERSICHT_WIDGETS_DIR": "/w"}):
             self.assertEqual(ubs_core.default_widgets_dir(), Path("/w"))
@@ -94,7 +94,7 @@ class ScaleRectsTest(unittest.TestCase):
         self.assertEqual(ubs_core.scale_rects([(10, 20, 30, 40)], (100, 100), (100, 100)), [(10, 20, 30, 40)])
 
     def test_text_scaling_zoom(self):
-        # GNOME text-scaling-factor 1.1: viewport 2792 CSS px inside a 3072 px window
+        # zoom 1.1: viewport 2792 CSS px inside a 3072 px window
         [(x, y, w, h)] = ubs_core.scale_rects([(731.2, 100.2, 13.6, 15.5)], (2792, 1477), (3072, 1728))
         self.assertLessEqual(x, 731.2 * 3072 / 2792)
         self.assertGreaterEqual(x + w, (731.2 + 13.6) * 3072 / 2792)
@@ -115,9 +115,9 @@ class ZoomTest(unittest.TestCase):
         self.assertEqual(ubs_core.parse_zoom_mode("99"), "system")
 
     def test_system_mode_follows_text_scale(self):
-        # WebKit already zooms by 1.1 on its own → nothing extra needed
+        # the engine already zooms by 1.1 on its own → nothing extra needed
         self.assertAlmostEqual(ubs_core.webkit_zoom_level("system", 1.1, 1.1), 1.0)
-        # WebKit ignores text scaling → we apply it
+        # the engine does not scale by itself → we apply it
         self.assertAlmostEqual(ubs_core.webkit_zoom_level("system", 1.5, 1.0), 1.5)
 
     def test_fixed_mode_compensates_implicit_zoom(self):
@@ -148,7 +148,7 @@ class PlasmaHelpersTest(unittest.TestCase):
 
     def test_control_socket_path(self):
         with mock.patch.dict(os.environ, {"XDG_RUNTIME_DIR": "/run/user/42"}):
-            self.assertEqual(ubs_core.control_socket_path(), Path("/run/user/42/plasma-uebersicht.sock"))
+            self.assertEqual(ubs_core.control_socket_path(), Path("/run/user/42/kde-uebersicht.sock"))
         with mock.patch.dict(os.environ, {}, clear=True):
             self.assertEqual(ubs_core.control_socket_path().parent, Path("/tmp"))
 

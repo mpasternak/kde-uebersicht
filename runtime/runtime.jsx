@@ -202,7 +202,7 @@ async function sync(changed) {
 
 // ---------------------------------------------------------------- input region
 // The window covers the whole screen, but clicks should reach widgets only where
-// something is drawn — everything else passes through to the desktop (DING icons etc.).
+// something is drawn — everything else passes through to the desktop (desktop icons etc.).
 let regionTimer = null;
 let lastRegion = "";
 function collectRects() {
@@ -225,7 +225,7 @@ function sendRegion() {
   const key = JSON.stringify([rects, window.innerWidth, window.innerHeight]);
   if (key === lastRegion) return;
   lastRegion = key;
-  // viewport lets the daemon convert CSS px to window px when WebKit zooms the page
+  // viewport lets the daemon convert CSS px to window px when the page is zoomed
   bridge({ op: "region", rects, viewport: [window.innerWidth, window.innerHeight] }).catch(() => {});
 }
 function scheduleRegion() {

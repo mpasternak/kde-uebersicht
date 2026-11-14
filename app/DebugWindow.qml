@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Window
 
 Window {
-    title: "plasma-uebersicht (debug)"
+    title: "kde-uebersicht (debug)"
     width: 1280
     height: 800
     color: "#202020"

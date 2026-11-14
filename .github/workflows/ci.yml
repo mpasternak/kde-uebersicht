@@ -3,7 +3,6 @@ name: CI
 on:
   push:
     branches: [master]
-    tags: ["v*"]
   pull_request:
 
 jobs:
@@ -27,25 +26,7 @@ jobs:
       - run: npm test
 
       - name: Ruff
-        run: pipx run ruff check extension kde tests && pipx run ruff format --check extension kde tests
+        run: pipx run ruff check app tests && pipx run ruff format --check app tests
 
       - name: Python unit tests
         run: python -m unittest discover -s tests -v
-
-      - name: Pack extension
-        run: |
-          cd extension
-          zip -r ../gnome-uebersicht.zip . -x '__pycache__/*'
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: gnome-uebersicht
-          path: gnome-uebersicht.zip
-
-      - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" gnome-uebersicht.zip --generate-notes
-    permissions:
-      contents: write

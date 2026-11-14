@@ -1,4 +1,4 @@
-"""Pure-Python core of the gnome-uebersicht daemon (no GTK/WebKit imports),
+"""Pure-Python core of the kde-uebersicht daemon (no Qt imports),
 so it can be unit-tested anywhere."""
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ def default_widgets_dir() -> Path:
 
 
 def state_file() -> Path:
-    return _xdg("XDG_STATE_HOME", ".local/state") / "gnome-uebersicht" / "state.json"
+    return _xdg("XDG_STATE_HOME", ".local/state") / "kde-uebersicht" / "state.json"
 
 
 def load_state(path: Path | None = None) -> dict:
@@ -49,7 +49,7 @@ def save_state(state: dict, path: Path | None = None) -> None:
 
 def find_esbuild(explicit: str | None = None) -> str | None:
     cands = [explicit, os.environ.get("UBERSICHT_ESBUILD")]
-    # the extension is usually a symlink into the repo — node_modules lives in the repo root
+    # app/ lives in the repo — node_modules is in the repo root
     for base in (HERE, HERE.parent):
         cands.append(str(base / "node_modules" / ".bin" / "esbuild"))
     cands.append(shutil.which("esbuild"))
@@ -103,8 +103,8 @@ class Widgets:
 def scale_rects(rects, viewport, window_size) -> list[tuple[int, int, int, int]]:
     """Map rectangles from CSS pixels to window (logical) pixels.
 
-    WebKit may zoom the page (e.g. GNOME's text scaling factor 1.1 makes CSS
-    pixels 10% larger), so the input region must be scaled by window/viewport.
+    The page may be zoomed (e.g. 'Widget size: 125%' makes CSS pixels 25%
+    larger), so the input region must be scaled by window/viewport.
     Rounds outwards so a widget's clickable area is never smaller than drawn."""
     vw, vh = viewport if viewport else (0, 0)
     ww, wh = window_size
@@ -123,7 +123,7 @@ ZOOM_PRESETS = (1.0, 1.1, 1.25, 1.5, 2.0)
 
 
 def parse_zoom_mode(value) -> str | float:
-    """'system' (follow GNOME's text scaling) or a fixed factor such as 1.25."""
+    """'system' (follow the desktop font size) or a fixed factor such as 1.25."""
     if value == ZOOM_SYSTEM or value is None:
         return ZOOM_SYSTEM
     try:
@@ -134,18 +134,17 @@ def parse_zoom_mode(value) -> str | float:
 
 
 def webkit_zoom_level(mode, text_scale: float, implicit: float) -> float:
-    """Zoom level to give WebKit so widgets end up at the wanted size.
+    """Zoom factor to give the web view so widgets end up at the wanted size.
 
-    `implicit` is the zoom WebKit already applies on its own (it may or may not
-    follow GNOME's text scaling); the result compensates for it."""
+    `implicit` is the zoom the web engine already applies on its own (measured
+    from the viewport); the result compensates for it."""
     target = text_scale if mode == ZOOM_SYSTEM else float(mode)
     if not target or target <= 0:
         target = 1.0
     return target / (implicit if implicit and implicit > 0 else 1.0)
 
 
-# --- KDE Plasma backend (kde/uebersicht_plasma.py) -------------------------------
-# Menu entries of the Plasma tray menu; the GNOME extension keeps its own copy.
+# --- tray menu and control socket ----------------------------------------------
 ZOOM_CHOICES = (
     (ZOOM_SYSTEM, "Follow system text size"),
     ("1", "100%"),
@@ -170,11 +169,11 @@ def widget_label(wid: str) -> str:
 
 
 def control_socket_path() -> Path:
-    """Unix socket the Plasma daemon listens on for control commands."""
+    """Unix socket the daemon listens on for control commands."""
     runtime = os.environ.get("XDG_RUNTIME_DIR")
     if runtime:
-        return Path(runtime) / "plasma-uebersicht.sock"
-    return Path("/tmp") / f"plasma-uebersicht-{os.getuid()}.sock"
+        return Path(runtime) / "kde-uebersicht.sock"
+    return Path("/tmp") / f"kde-uebersicht-{os.getuid()}.sock"
 
 
 def parse_command(line: str) -> tuple[str, str]:
@@ -184,7 +183,7 @@ def parse_command(line: str) -> tuple[str, str]:
 
 
 def send_command(path: Path, line: str, timeout: float = 5.0) -> str:
-    """Send one control line to a running Plasma daemon and return its (JSON) reply."""
+    """Send one control line to the running daemon and return its (JSON) reply."""
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
         s.settimeout(timeout)
         s.connect(str(path))

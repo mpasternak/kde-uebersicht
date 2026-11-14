@@ -15,7 +15,7 @@ WebEngineView {
     // persistent profile: widgets' localStorage survives restarts
     WebEngineProfilePrototype {
         id: profileProto
-        storageName: "plasma-uebersicht"
+        storageName: "kde-uebersicht"
         persistentStoragePath: ubsDataDir
         cachePath: ubsCacheDir
     }

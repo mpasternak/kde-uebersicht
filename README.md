@@ -1,113 +1,88 @@
-# gnome-uebersicht
+# kde-uebersicht
+
+[![CI](https://github.com/mpasternak/kde-uebersicht/actions/workflows/ci.yml/badge.svg)](https://github.com/mpasternak/kde-uebersicht/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [Übersicht](https://tracesof.net/uebersicht/)-compatible desktop widgets for
-GNOME Shell and KDE Plasma on Wayland. Widgets are web components (JSX + CSS) fed by shell
+KDE Plasma on Wayland. Widgets are web components (JSX + CSS) fed by shell
 commands, drawn on the desktop above the wallpaper and below all windows.
 
 Existing Übersicht `.jsx` widgets run unchanged as long as their commands work
 on Linux (no `osascript`, no macOS paths).
 
+The GNOME counterpart is [gnome-uebersicht](https://github.com/mpasternak/gnome-uebersicht);
+both share the widget runtime and the widget API, so the same widgets folder
+works on either desktop.
+
 ## How it works
 
 ```
-GNOME Shell extension ──launches──▶ daemon (Python, GTK3 + WebKitGTK)
-   │  pins its window to the desktop:     │  transparent full-screen web view
-   │  DESKTOP type, all workspaces,       │  runs widget commands (bash)
-   │  primary monitor, above DING icons   │  compiles JSX with esbuild
-   │                                      │  click-through outside widgets
-   └─ top bar menu ──stdin commands──────▶│  (input region = widget boxes)
+systemd user service ──▶ app/kde_uebersicht.py (PyQt6)
+                            │  Desktop.qml: transparent Qt Quick window on the
+                            │    desktop layer (LayerShellQt, layer BOTTOM: above
+                            │    wallpaper and desktop icons, below all windows,
+                            │    on every virtual desktop)
+                            │  QtWebEngine view serving ubersicht:// (runtime +
+                            │    widget assets), widget commands run with bash,
+                            │    JSX compiled with esbuild, hot reload
+                            │  click-through outside widgets (window input mask
+                            │    = widget boxes)
+                            │  tray icon (StatusNotifierItem) with the menu
+                            └─ control socket: kde_uebersicht.py --send <command>
+                                          │
                                           ▼
                               JS runtime (React 18 + emotion)
                               implements the Übersicht widget API
 ```
 
-- **extension/extension.js** — thin GNOME Shell extension. Starts the daemon as
-  a trusted Wayland client (`Meta.WaylandClient`), turns its window into a
-  desktop-layer window and adds a top bar menu (show/hide all widgets or each
-  one separately, refresh, web inspector). Restarts the daemon if it dies.
-- **extension/uebersicht_daemon.py** — WebKitGTK window, `ubersicht://` scheme
-  serving the runtime and widget assets, JS bridge for `run`/compile, file
-  watcher with hot reload.
-- **extension/ubs_core.py** — the daemon's pure-Python parts (widget discovery,
-  state, esbuild invocation), importable without GTK.
+- **app/kde_uebersicht.py** — entry point and `--send` client.
+- **app/daemon.py** — the daemon: web view, `ubersicht://` scheme, QWebChannel
+  bridge (`run` / compile / input region), file watcher, tray menu, control socket.
+- **app/\*.qml** — the desktop-layer window, the web view, debug and inspector windows.
+- **app/ubs_core.py** — pure-Python parts (widget discovery, state, esbuild
+  invocation, zoom maths), importable without Qt.
 - **runtime/runtime.jsx** + **runtime/core.js** — the widget runtime (DOM layer +
-  DOM-free state machine), bundled into `extension/runtime/runtime.js`.
-
-Only changes to `extension.js` require logging out (Wayland cannot restart
-GNOME Shell in place). Daemon/runtime changes: top bar menu → *Restart daemon*.
-Widget changes: picked up automatically.
+  DOM-free state machine), bundled into `app/runtime/runtime.js`.
 
 ## Install
 
-Requirements: GNOME Shell 48–50, `python3-gi`, `gir1.2-webkit2-4.1`, Node.js/npm
-(build time only, plus the `esbuild` binary at runtime).
-
-From a checkout (development, the extension is symlinked to the repo):
-
-```sh
-./install.sh
-# log out and back in (Wayland), then:
-gnome-extensions enable uebersicht@local
-```
-
-From a [release](https://github.com/mpasternak/gnome-uebersicht/releases) zip
-(needs `esbuild` on `PATH`, e.g. `npm install -g esbuild`):
-
-```sh
-gnome-extensions install gnome-uebersicht.zip
-# log out and back in, then:
-gnome-extensions enable uebersicht@local
-```
-
-Publishing on extensions.gnome.org is tracked in
-[#1](https://github.com/mpasternak/gnome-uebersicht/issues/1).
-
-Widgets live in `~/.local/share/uebersicht/widgets`
-(override with `UBERSICHT_WIDGETS_DIR`).
-
-## KDE Plasma
-
-`kde/` is a native Plasma backend: the same widgets, runtime and state, with Qt
-instead of GTK and no Shell extension.
-
-```
-systemd user service ──▶ kde/uebersicht_plasma.py (PyQt6)
-                            │  Desktop.qml: Qt Quick window on the desktop layer
-                            │    (LayerShellQt, layer BOTTOM: above the wallpaper
-                            │    and desktop icons, below all windows, all desktops)
-                            │  QtWebEngine view, QWebChannel bridge emulating
-                            │    WebKit's messageHandlers → runtime.js unchanged
-                            │  click-through outside widgets (window input mask)
-                            │  tray icon (StatusNotifierItem) with the menu
-                            └─ control socket: uebersicht_plasma.py --send <cmd>
-```
-
-Requirements: Plasma 6 on Wayland, Qt ≥ 6.9 and
+Requirements: Plasma 6 on Wayland, Qt ≥ 6.9 (e.g. Ubuntu 26.04, Kubuntu), Node.js/npm.
 
 ```sh
 sudo apt install python3-pyqt6.qtwebengine python3-pyqt6.qtwebchannel \
   qml6-module-qtwebengine qml6-module-qtwebchannel qml6-module-org-kde-layershell
+git clone https://github.com/mpasternak/kde-uebersicht
+cd kde-uebersicht
+./install.sh
 ```
 
-plus Node.js/npm for the runtime bundle. Then:
+`install.sh` builds the runtime and installs and starts `kde-uebersicht.service`
+(a systemd user service started with the Plasma session, skipped in other
+desktops) plus a `.desktop` entry.
+
+Widgets live in `~/.local/share/uebersicht/widgets`
+(override with `UBERSICHT_WIDGETS_DIR`). Changes are picked up automatically.
+
+## Using it
+
+The tray icon menu: show/hide all widgets, show/hide each widget, widget size,
+refresh, reload, open the widgets folder, restart the daemon, web inspector.
+Left click on the icon shows/hides all widgets.
+
+From a terminal:
 
 ```sh
-kde/install.sh     # builds the runtime, installs and starts the systemd user service
+app/kde_uebersicht.py --send status                 # JSON: widgets, hidden, zoom
+app/kde_uebersicht.py --send "widget-hide hello.jsx"
+app/kde_uebersicht.py --send "zoom 1.25"            # or: zoom system
+app/kde_uebersicht.py --send refresh | reload | hide | show | inspect | restart | quit
 ```
 
-The service (`plasma-uebersicht.service`) starts with the Plasma session and is
-skipped in other desktops. The tray icon menu matches the GNOME top bar menu
-(left click shows/hides all widgets); *Widget size → Follow system font size*
-scales widgets with Plasma's general font (10 pt = 100%). From a terminal:
+Widget size follows Plasma's display scale. *Widget size → Follow system font
+size* also scales widgets with the general font (10 pt = 100%), live; a fixed
+zoom (100–200%) can be chosen instead.
 
-```sh
-kde/uebersicht_plasma.py --send status             # JSON: widgets, hidden, zoom
-kde/uebersicht_plasma.py --send "widget-hide hello.jsx"
-kde/uebersicht_plasma.py --send restart            # after daemon/QML/runtime changes
-```
-
-Debugging: `journalctl --user -u plasma-uebersicht -f`, tray menu → *Web
-inspector*, or `kde/uebersicht_plasma.py --debug` for an ordinary window.
+After changing the daemon, QML or runtime: `--send restart` (or the tray menu).
 
 ## Widget API
 
@@ -137,12 +112,8 @@ Supported:
 - `localStorage` (persistent), links open in the default browser
 - `*.jsx` files and `*.widget/index.jsx` folders; `node_modules`, `lib`, `src` and dot/underscore files are skipped
 
-Widget size follows GNOME's display scale and text scaling factor (Settings →
-Accessibility → Large Text) live; the top bar menu → *Widget size* can pin it
-to a fixed zoom instead (100–200%).
-
 Not supported (yet): legacy CoffeeScript widgets, per-widget screen selection,
-multiple monitors (widgets render on the primary monitor).
+multiple monitors (widgets render on the primary screen).
 
 ## Development
 
@@ -150,28 +121,23 @@ multiple monitors (widgets render on the primary monitor).
 npm ci
 npm run lint && npm run build && npm test     # JS: eslint, bundle, node --test
 python3 -m unittest discover -s tests         # Python: daemon core
-uvx ruff check extension kde tests            # Python lint
+uvx ruff check app tests                      # Python lint
 pre-commit install                            # optional git hooks
 ```
 
-CI runs all of the above on every push and builds the extension zip; pushing a
-`v*` tag publishes it as a GitHub release.
+## Debugging
+
+- Logs, including `console.log` from widgets: `journalctl --user -u kde-uebersicht -f`
+- Tray menu → *Web inspector (debug)* opens Chromium DevTools for the widgets.
+- Run in an ordinary window: `systemctl --user stop kde-uebersicht && app/kde_uebersicht.py --debug`
 
 ## Relationship to Übersicht
 
-This is an independent reimplementation of the Übersicht widget API for GNOME;
-it shares no code with [Übersicht](https://github.com/felixhageloh/uebersicht)
+This is an independent reimplementation of the Übersicht widget API for KDE
+Plasma; it shares no code with [Übersicht](https://github.com/felixhageloh/uebersicht)
 by Felix Hageloh, and is not affiliated with or endorsed by it. All credit for
 the widget model goes to the original project.
 
 ## License
 
 MIT
-
-## Debugging
-
-- Top bar menu → *Web inspector (debug)* opens WebKit's inspector.
-- Daemon output and `console.log` from widgets go to the journal:
-  `journalctl --user -f -o cat | grep uebersicht`
-- Run the daemon by hand in a normal window:
-  `./extension/uebersicht_daemon.py --debug`

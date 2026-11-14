@@ -5,7 +5,7 @@ import QtWebEngine
 
 Window {
     property var target
-    title: "plasma-uebersicht — inspector"
+    title: "kde-uebersicht — inspector"
     width: 1100
     height: 750
     visible: true

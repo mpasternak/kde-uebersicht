@@ -1,6 +1,5 @@
-"""Qt side of plasma-uebersicht (entry point: uebersicht_plasma.py).
+"""The kde-uebersicht daemon (entry point: kde_uebersicht.py).
 
-Same job as extension/uebersicht_daemon.py on GNOME, with Qt instead of GTK:
 QtWebEngine renders the widgets, LayerShellQt (in Desktop.qml) puts the window
 on the desktop layer, QSystemTrayIcon (StatusNotifierItem on Plasma) is the menu.
 """
@@ -56,8 +55,8 @@ from ubs_core import (
 )
 
 HERE = Path(__file__).resolve().parent
-RUNTIME_DIR = HERE.parent / "extension" / "runtime"
-APP_ID = "plasma-uebersicht"
+RUNTIME_DIR = HERE / "runtime"
+APP_ID = "kde-uebersicht"
 SCHEME = b"ubersicht"
 APP_URL = "ubersicht://app/"
 RUN_TIMEOUT_MS = 120_000
@@ -66,7 +65,7 @@ TRAY_ICON = "widget-alternatives"
 NO_INPUT = QRect(-10, -10, 1, 1)  # an empty QRegion would mean "no mask", i.e. all clicks land here
 
 # Emulates WebKit's window.webkit.messageHandlers.ubersicht (postMessage returning
-# a promise) on top of QWebChannel, so runtime.js is shared with GNOME unchanged.
+# a promise, as in Übersicht and gnome-uebersicht) on top of QWebChannel.
 # Also lets the daemon evaluate JS in the page (the `evaluate` signal).
 BRIDGE_JS = r"""
 (function () {
@@ -535,7 +534,7 @@ class Daemon(QObject):
             done({"error": f"no such widget: {wid}"})
             return
         if not self.esbuild:
-            done({"error": "esbuild not found — run `npm install` in the gnome-uebersicht repository"})
+            done({"error": "esbuild not found — run `npm install` in the kde-uebersicht repository"})
             return
 
         def fin(r):

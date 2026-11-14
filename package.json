@@ -1,12 +1,12 @@
 {
-  "name": "gnome-uebersicht",
+  "name": "kde-uebersicht",
   "private": true,
   "version": "0.1.0",
-  "description": "Übersicht-compatible desktop widgets for GNOME Shell (Wayland)",
+  "description": "Übersicht-compatible desktop widgets for KDE Plasma (Wayland)",
   "scripts": {
-    "build": "esbuild runtime/runtime.jsx --bundle --format=iife --minify --target=es2020 --define:process.env.NODE_ENV=\\\"production\\\" --outfile=extension/runtime/runtime.js",
+    "build": "esbuild runtime/runtime.jsx --bundle --format=iife --minify --target=es2020 --define:process.env.NODE_ENV=\\\"production\\\" --outfile=app/runtime/runtime.js",
     "test": "node --test tests/*.test.js",
-    "lint": "eslint extension runtime tests"
+    "lint": "eslint runtime tests"
   },
   "dependencies": {
     "@emotion/css": "^11.13.5",

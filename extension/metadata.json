@@ -1,7 +1,0 @@
-{
-  "uuid": "uebersicht@local",
-  "name": "Übersicht for GNOME",
-  "description": "Übersicht-compatible desktop widgets (JSX + shell commands), rendered by WebKitGTK below all windows.",
-  "shell-version": ["48", "49", "50"],
-  "version-name": "0.1.0"
-}

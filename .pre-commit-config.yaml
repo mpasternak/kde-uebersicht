@@ -19,4 +19,4 @@ repos:
         entry: npx eslint
         language: system
         files: \.(js|jsx)$
-        exclude: ^extension/runtime/runtime\.js$
+        exclude: ^app/runtime/runtime\.js$

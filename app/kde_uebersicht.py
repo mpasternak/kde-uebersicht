@@ -1,25 +1,20 @@
 #!/usr/bin/python3
-"""plasma-uebersicht: Übersicht-style desktop widgets for KDE Plasma (Wayland).
+"""kde-uebersicht: Übersicht-style desktop widgets for KDE Plasma (Wayland).
 
 A transparent Qt Quick window on the desktop layer (LayerShellQt, layer BOTTOM:
 above the wallpaper and desktop icons, below all windows) with a QtWebEngine
-view that runs the same widget runtime as the GNOME extension. A system tray
-icon offers the same menu as the GNOME top bar indicator.
+view that runs the widgets, and a system tray icon with the menu.
 
 Control from the terminal (talks to the running daemon over a Unix socket):
-  uebersicht_plasma.py --send reload | refresh | hide | show | inspect | quit
-                              | widget-hide <id> | widget-show <id>
-                              | zoom system|<factor> | status | restart | open-folder
+  kde_uebersicht.py --send reload | refresh | hide | show | inspect | quit
+                           | widget-hide <id> | widget-show <id>
+                           | zoom system|<factor> | status | restart | open-folder
 """
 
 import argparse
 import sys
-from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent / "extension"))  # ubs_core, shared with the GNOME daemon
-
-from ubs_core import control_socket_path, default_widgets_dir, send_command  # noqa: E402
+from ubs_core import control_socket_path, default_widgets_dir, send_command
 
 
 def main():
@@ -36,10 +31,10 @@ def main():
         try:
             print(send_command(control_socket_path(), args.send), end="")
         except (ConnectionRefusedError, FileNotFoundError):
-            sys.exit(f"plasma-uebersicht is not running (no listener on {control_socket_path()})")
+            sys.exit(f"kde-uebersicht is not running (no listener on {control_socket_path()})")
         return
 
-    from plasma_daemon import run  # Qt is imported only here, so --send stays fast
+    from daemon import run  # Qt is imported only here, so --send stays fast
 
     sys.exit(run(args))
 
